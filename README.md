@@ -160,6 +160,65 @@ graph TD
 | **3. Rust Microservice**| Sync HTTP Request | ✅ 100% Stable | `4,973 reqs` | High CPU tasks, strong segregation. |
 | **4. Enterprise Queue** | Redis + Rust Worker | ✅ 100% Stable | `150,000+ reqs` | Massive tasks (videos, reports). |
 
+---
+
+## 🚀 How to Run locally
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) installed
+- [Rust (Cargo)](https://rustup.rs/) installed
+- [Redis](https://redis.io/) running locally on port 6379 (e.g., `brew install redis` && `brew services start redis`)
+
+### Running Version 1 & 2 (Node Threading)
+```shell
+# V1: Unpooled
+cd 01-unpooled-workers
+node index-eight-workers.js
+
+# V2: Piscina Pool
+cd 02-thread-pool
+npm install
+node index-pool.js
+```
+
+### Running Version 3 (Rust Microservice)
+Requires two terminals to run both the API Gateway and the Rust background service synchronously.
+```shell
+# Terminal 1: Rust Server
+cd 03-microservice/rust-worker
+cargo run --release
+
+# Terminal 2: Node Gateway
+cd 03-microservice
+node index-microservice.js
+```
+
+### Running Version 4 (Enterprise Task Queue)
+Requires three separate components (Redis + Gateway + Worker).
+
+**Terminal 1:** Start Redis Server (if not running in background)
+```shell
+redis-server
+```
+
+**Terminal 2:** Start the API Gateway
+```shell
+cd 04-async-task-queue
+npm install
+node api-gateway.js
+```
+
+**Terminal 3:** Start the Native Rust Worker
+```shell
+cd 04-async-task-queue/rust-worker
+cargo run --release
+```
+
+**Terminal 4 (Testing):** Trigger the queue
+```shell
+curl http://localhost:3000/blocking
+```
+
 <br/>
 
 *Built to explore and document the fascinating depths of horizontal scaling, CPU context switching, OS thread exhaustion, and low-level vs interpreted languages.*
