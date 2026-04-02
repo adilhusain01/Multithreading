@@ -138,10 +138,11 @@ graph TD
 ### 📊 Benchmark Results
 | Metric | Result |
 | :--- | :--- |
-| **Total Gateway Requests** | `~25,000+` requests 🤯 |
+| **Total Gateway Requests** | `~150,000+` requests 🤯 |
+| **Gateway Throughput** | `~15,000` requests/sec |
 | **Worker Native Throughput** | `~509` requests/sec ⚡️ |
 | **Timeouts / Errors** | `0` |
-| **Gateway Latency** | `~2ms` |
+| **Gateway Latency** | `~6ms` |
 
 ### 🚨 Critical Understandings Uncovered
 - **The "Cheating" Benchmark:** The Express server receives requests so incredibly fast because it *doesn't do any math at all*. It just writes to a Redis database and replies safely. The heavy work is piling up silently and being chewed through on the robust Rust backend.
@@ -157,7 +158,7 @@ graph TD
 | **1. Unpooled** | Bare-metal JS | ❌ Crashed | `0 reqs` | Literally never. |
 | **2. JS Thread Pool** | JS Queue | ✅ 100% Stable | `1,050 reqs` | Medium CPU tasks (10ms - 2s). |
 | **3. Rust Microservice**| Sync HTTP Request | ✅ 100% Stable | `4,973 reqs` | High CPU tasks, strong segregation. |
-| **4. Enterprise Queue** | Redis + Rust Worker | ✅ 100% Stable | `25,000+ reqs` | Massive tasks (videos, reports). |
+| **4. Enterprise Queue** | Redis + Rust Worker | ✅ 100% Stable | `150,000+ reqs` | Massive tasks (videos, reports). |
 
 <br/>
 
