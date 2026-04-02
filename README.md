@@ -106,13 +106,47 @@ graph LR
 
 ---
 
-## 🏆 Final Scoreboard (10-Second Barrage)
+## � Architecture 4: Asynchronous Task Queue (Event-Driven)
+**Folder:** `04-async-task-queue`
 
-| Architecture | Setup | Stability | Performance Score |
-| :--- | :--- | :--- | :--- |
-| **1. Unpooled** | Bare-metal JS | ❌ Crashed | `0 reqs` |
-| **2. Piscina Pool** | JS Queue | ✅ 100% Stable | `1,050 reqs` |
-| **3. Rust Microservice** | Distributed | ✅ 100% Stable | `4,973 reqs` 🚀 |
+### The Concept
+For massive tasks taking hours (like processing video or machine learning), holding an HTTP connection open is disastrous because browsers will eventually close the connection with a "Network Timeout" error. 
+
+Instead of waiting for the calculation to finish (synchronous), Node.js instantly generates a **Job ID**, adds the problem into a Background Task Database/Queue, and immediately returns a **202 Accepted** response. The user can poll the `/status/:jobId` endpoint later to check if it's completed.
+
+```mermaid
+graph TD
+    Users((100 Users)) -->|100 Requests| API[Express API]
+    API -.->|1. Generate Job ID| DB[(Job Database)]
+    API -->|2. Instantly Return HTTP 202| Users
+    API -->|3. Push Task to Background| Queue[Background Worker Queue]
+    Queue -->|4. Work processed silently| Calc[Long Calculation]
+    Calc -->|5. Update Job ID status| DB
+```
+
+### 📊 Benchmark Results
+| Metric | Result |
+| :--- | :--- |
+| **Total Requests** | `~25,000+` requests 🤯 |
+| **Timeouts / Errors** | `0` |
+| **Average Latency** | `~2ms` ⚡️ |
+| **Throughput** | `~2,500 req/sec` |
+
+### 🚨 Critical Understandings Uncovered
+- **The "Cheating" Benchmark:** The server easily hits 25,000 requests per second because Node.js *didn't actually do any math yet*. It simply generated a Job tracking ID and replied. The math is piling up silently in the background queue.
+- **When it Shines:** Essential for operations taking 5 seconds to 5 hours (Video Rendering, email blasts, massive PDFs). It provides instant feedback to the user ("We are processing your video!").
+- **When it Lacks:** Unnecessary overhead for fast operations (10ms - 2s) where the frontend needs to render the exact result immediately on the screen without pinging a "Status Polling API" every second to check if it's done.
+
+---
+
+## 🏆 Final Scoreboard (10-Second Barrage, 100 Users)
+
+| Architecture | Setup | Stability | 10-Second Performance | Best Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Unpooled** | Bare-metal JS | ❌ Crashed | `0 reqs` | Literally never. |
+| **2. JS Thread Pool** | JS Queue | ✅ 100% Stable | `1,050 reqs` | Medium CPU tasks (10ms - 2s). |
+| **3. Rust Microservice**| Sync API Gateway | ✅ 100% Stable | `4,973 reqs` | High CPU tasks, strong segregation. |
+| **4. Async Job Queue** | Event-Driven Queue | ✅ 100% Stable | `25,000+ reqs` | Massive tasks (hours long). |
 
 <br/>
 
