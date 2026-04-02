@@ -1,13 +1,13 @@
 const express = require('express');
-const { Queue } = require('bullmq');
+const Redis = require('ioredis');
+const crypto = require('crypto');
 
 const app = express();
 const port = 3000;
 
 // Connect to our local Redis server we just installed! 
 // This is the true Enterprise Message Broker.
-const connection = { host: '127.0.0.1', port: 6379 };
-const mathQueue = new Queue('MathCalculations', { connection });
+const redis = new Redis({ host: '127.0.0.1', port: 6379 });
 
 app.get('/non-blocking', (req, res) => {
     res.status(200).send("This page is non-blocking");
@@ -16,37 +16,42 @@ app.get('/non-blocking', (req, res) => {
 app.get('/blocking', async (req, res) => {
     // 1. Take the request and drop a message payload into the Redis Queue
     // The web server does NO mathematical work. Zero.
-    const job = await mathQueue.add('Calculate20Million', { target: 20_000_000 });
+    const jobId = crypto.randomUUID();
+    
+    // 2. Set initial database status so the user can look it up later
+    await redis.hset(`job:${jobId}`, 'status', 'Pending');
+    await redis.hset(`job:${jobId}`, 'result', '');
 
-    // 2. Instantly tell the user "Your report is generating..."
+    // 3. Drop the message payload cleanly into a Redis Queue List (RabbitMQ/Kafka equivalent)
+    const payload = JSON.stringify({ id: jobId, target: 20_000_000 });
+    await redis.lpush('MathTasksQueue', payload);
+
+    // 4. Instantly tell the user "Your report is generating..."
     // (HTTP 202 Accepted)
     res.status(202).json({
-        message: "Your calculation has been sent to the Redis Queue for background processing.",
-        jobId: job.id,
-        checkStatusUrl: `http://localhost:${port}/status/${job.id}`
+        message: "Your calculation has been sent to the Redis Queue for background processing. A Rust worker will pick it up.",
+        jobId: jobId,
+        checkStatusUrl: `http://localhost:${port}/status/${jobId}`
     });
 });
 
 app.get('/status/:jobId', async (req, res) => {
-    const job = await mathQueue.getJob(req.params.jobId);
+    const jobKey = `job:${req.params.jobId}`;
     
-    if (!job) {
-        return res.status(404).send("Job ID not found in Redis.");
+    // Quick Hash check on our Database
+    const status = await redis.hget(jobKey, 'status');
+    const result = await redis.hget(jobKey, 'result');
+    
+    if (!status) return res.status(404).send("Job ID not found in Redis Database.");
+    
+    if (status === 'Completed') {
+        return res.status(200).json({ status, result: parseInt(result) });
+    } else if (status === 'Failed') {
+        return res.status(500).json({ status, error: result });
     }
     
-    // 3. The completely separate Worker updates the Redis Database when finished.
-    // We check that database here.
-    const state = await job.getState();
-    const result = job.returnvalue;
-
-    if (state === 'completed') {
-        return res.status(200).json({ status: state, result: result });
-    } else if (state === 'failed') {
-        return res.status(500).json({ status: state, error: job.failedReason });
-    }
-    
-    // Still in the queue or actively processing
-    res.status(206).json({ status: state }); 
+    // Still Pending or actively processing
+    res.status(206).json({ status }); 
 });
 
 app.listen(port, () => {

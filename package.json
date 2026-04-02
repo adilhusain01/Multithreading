@@ -10,7 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "bullmq": "^5.72.1",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "piscina": "^5.1.4"

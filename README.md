@@ -116,7 +116,7 @@ Instead of doing the math anywhere near the Node.js web server or using internal
 1. The **API Gateway** intercepts the HTTP request.
 2. It drops a message payload into a dedicated Message Queue (e.g. `RabbitMQ`, `Kafka`, or `Redis`).
 3. Express tells the user "Your report is generating..." (`HTTP 202 Accepted`) and instantly returns.
-4. A completely separate, background **Worker Server** polls the Redis queue, picks up the heavy math problem, and computes it safely.
+4. A completely separate, background **Worker Server (Rust)** polls the Redis queue, picks up the heavy math problem, and computes it safely.
 5. When finished, it updates the Redis database (or sends a WebSocket notification back to the user).
 
 ```mermaid
@@ -126,7 +126,7 @@ graph TD
     API -->|2. Reply HTTP 202 Instantly| Users
     
     subgraph Decoupled Microservice
-    Worker[Standalone Worker Server] -->|3. Constantly polling| Redis
+    Worker[Rust Standalone Worker] -->|3. Constantly polling| Redis
     Worker -->|4. Heavy Lifting| CPU{CPU Processing}
     CPU -->|5. Save Result| Redis
     end
@@ -139,12 +139,13 @@ graph TD
 | Metric | Result |
 | :--- | :--- |
 | **Total Gateway Requests** | `~25,000+` requests 🤯 |
+| **Worker Native Throughput** | `~509` requests/sec ⚡️ |
 | **Timeouts / Errors** | `0` |
-| **Average Latency** | `~2ms` ⚡️ |
+| **Gateway Latency** | `~2ms` |
 
 ### 🚨 Critical Understandings Uncovered
-- **The "Cheating" Benchmark:** The Express server receives requests so incredibly fast because it *doesn't do any math at all*. It just writes to a Redis database and replies safely. The heavy work is piling up silently and being chewed through on the backend.
-- **Fail-Proof Resiliency:** If the Express web server crashes... the Worker server keeps processing jobs. If the Worker server crashes... the Express server happily keeps accepting new customer requests into the queue. Total structural independence!
+- **The "Cheating" Benchmark:** The Express server receives requests so incredibly fast because it *doesn't do any math at all*. It just writes to a Redis database and replies safely. The heavy work is piling up silently and being chewed through on the robust Rust backend.
+- **Fail-Proof Resiliency:** If the Express web server crashes... the Rust Worker server keeps processing jobs. If the Rust Worker server crashes... the Express server happily keeps accepting new customer requests into the queue. Total structural independence!
 - **When it Shines:** Essential for operations taking anywhere from 5 seconds to 5 hours. It provides instant feedback to the user and scales horizontally perfectly.
 
 ---
@@ -156,7 +157,7 @@ graph TD
 | **1. Unpooled** | Bare-metal JS | ❌ Crashed | `0 reqs` | Literally never. |
 | **2. JS Thread Pool** | JS Queue | ✅ 100% Stable | `1,050 reqs` | Medium CPU tasks (10ms - 2s). |
 | **3. Rust Microservice**| Sync HTTP Request | ✅ 100% Stable | `4,973 reqs` | High CPU tasks, strong segregation. |
-| **4. Enterprise Queue** | Redis + BullMQ | ✅ 100% Stable | `25,000+ reqs` | Massive tasks (videos, reports). |
+| **4. Enterprise Queue** | Redis + Rust Worker | ✅ 100% Stable | `25,000+ reqs` | Massive tasks (videos, reports). |
 
 <br/>
 
