@@ -17,8 +17,7 @@ async fn compute_handler(Json(payload): Json<ComputeRequest>) -> Json<ComputeRes
     let thread_count = payload.thread_count;
 
     // Use Rayon's thread pool to prevent thread exhaustion (simulates Piscina's queue)
-    // We lower the operations to 200 Million to match the successful Node.js test
-    let target = 200_000_000u64 / (thread_count as u64);
+    let target = 20_000_000u64 / (thread_count as u64);
     
     let total: u64 = tokio::task::spawn_blocking(move || {
         use rayon::prelude::*;

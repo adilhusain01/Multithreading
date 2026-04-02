@@ -2,7 +2,7 @@
 
 This repository demonstrates the evolution of handling heavy CPU-bound tasks in a Node.js web server. It contains three distinct architectural patterns, moving from a basic threaded approach to a production-scale distributed microservice.
 
-Each version contains a `/blocking` route that computes a massive loop (20 Billion iterations in total), which will typically freeze a single-threaded Node.js server. We demonstrate how to mitigate this using 3 different strategies.
+Each version contains a `/blocking` route that computes a massive loop (20 Million iterations in total), which will typically freeze a single-threaded Node.js server. We demonstrate how to mitigate this using 3 different strategies.
 
 ---
 
